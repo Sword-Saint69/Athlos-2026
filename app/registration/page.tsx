@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Link from "next/link";
-import { ArrowLeft, Zap, Loader2 } from "lucide-react";
+import { ArrowLeft, Zap, Loader2, Trophy } from "lucide-react";
 import { collection, getDocs, query, where, addDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
@@ -27,7 +27,7 @@ export default function RegistrationPage() {
     sex: "",
     group: ""
   });
-  
+
   const [events, setEvents] = useState<Event[]>([]);
   const [loadingEvents, setLoadingEvents] = useState<boolean>(true);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -46,27 +46,27 @@ export default function RegistrationPage() {
       try {
         setLoadingEvents(true);
         setEventsError(null);
-        
-        // Fetch only upcoming and active events
+
+        // Fetch only upcoming and active events for registration
         const q = query(
           collection(db, "events"),
           where("status", "in", ["upcoming", "active"])
         );
-        
+
         const querySnapshot = await getDocs(q);
         const eventsData: Event[] = [];
-        
+
         querySnapshot.forEach((doc) => {
           eventsData.push({
             id: doc.id,
             ...doc.data()
           } as Event);
         });
-        
+
         // Sort events by name
         eventsData.sort((a, b) => a.name.localeCompare(b.name));
         setEvents(eventsData);
-        
+
       } catch (err) {
         console.error("Error fetching events: ", err);
         setEventsError("Failed to load events. Please try again.");
@@ -80,10 +80,10 @@ export default function RegistrationPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Find the selected event details
     const selectedEvent = events.find(event => event.id === formData.event);
-    
+
     try {
       // Add registration data to Firebase
       const registrationData = {
@@ -94,13 +94,13 @@ export default function RegistrationPage() {
         registeredAt: new Date(),
         status: 'pending' as const
       };
-      
+
       // Add to athletes collection in Firestore
       await addDoc(collection(db, "athletes"), registrationData);
-      
+
       // Show success message
       alert(`Registration submitted successfully for ${formData.fullName}!`);
-      
+
       // Reset form
       setFormData({
         fullName: "",
@@ -111,7 +111,7 @@ export default function RegistrationPage() {
         sex: "",
         group: ""
       });
-      
+
     } catch (error) {
       console.error("Error submitting registration:", error);
       alert("Failed to submit registration. Please try again.");
@@ -122,7 +122,7 @@ export default function RegistrationPage() {
     <div className="relative flex min-h-screen w-full flex-col bg-background-dark text-white font-display overflow-hidden">
       {/* Track lines background */}
       <div className="fixed inset-0 track-lines opacity-60 pointer-events-none"></div>
-      
+
       {/* Lane numbers */}
       <div className="absolute inset-0 grid grid-cols-8 pointer-events-none">
         <div className="relative"><span className="lane-number">01</span></div>
@@ -136,16 +136,13 @@ export default function RegistrationPage() {
       </div>
 
       {/* Navigation */}
-      <div className="fixed top-10 left-10 z-50">
-        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors flex items-center gap-2" href="/">
-          <ArrowLeft className="text-sm" />
-          Back
-        </Link>
-      </div>
-
-      <div className="fixed top-10 right-10 z-50 flex gap-10">
-        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/login">Login</Link>
-        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/help">Help</Link>
+      {/* Navigation */}
+      <div className="fixed top-10 right-10 z-50 flex gap-8">
+        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/">Home</Link>
+        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/registration">Registration</Link>
+        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/scorecard">Result</Link>
+        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/winners">Winner</Link>
+        <Link className="text-xs font-mono uppercase tracking-[0.4em] hover:text-primary transition-colors" href="/developers">Dev</Link>
       </div>
 
       <main className="relative z-10 flex flex-col items-center justify-center grow py-20 px-4">
@@ -220,9 +217,9 @@ export default function RegistrationPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-2">
                 <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50">Event *</label>
-                <Select 
-                  value={formData.event} 
-                  onValueChange={(value) => setFormData({...formData, event: value})}
+                <Select
+                  value={formData.event}
+                  onValueChange={(value) => setFormData({ ...formData, event: value })}
                   disabled={loadingEvents || eventsError !== null}
                 >
                   <SelectTrigger className="w-full bg-charcoal border-white/20 text-white font-mono text-sm px-4 py-3 focus:border-primary focus:ring-0 transition-colors">
@@ -244,8 +241,8 @@ export default function RegistrationPage() {
                       </div>
                     ) : (
                       events.map((event) => (
-                        <SelectItem 
-                          key={event.id} 
+                        <SelectItem
+                          key={event.id}
                           value={event.id}
                           className="focus:bg-primary focus:text-white py-3 px-4 cursor-pointer hover:bg-white/10"
                         >
@@ -262,7 +259,7 @@ export default function RegistrationPage() {
 
               <div className="space-y-2">
                 <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50">Group *</label>
-                <Select value={formData.group} onValueChange={(value) => setFormData({...formData, group: value})}>
+                <Select value={formData.group} onValueChange={(value) => setFormData({ ...formData, group: value })}>
                   <SelectTrigger className="w-full bg-charcoal border-white/20 text-white font-mono text-sm px-4 py-3 focus:border-primary focus:ring-0 transition-colors">
                     <SelectValue placeholder="SELECT GROUP" />
                   </SelectTrigger>
@@ -274,10 +271,10 @@ export default function RegistrationPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               <div className="space-y-2">
                 <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50">Sex *</label>
-                <Select value={formData.sex} onValueChange={(value) => setFormData({...formData, sex: value})}>
+                <Select value={formData.sex} onValueChange={(value) => setFormData({ ...formData, sex: value })}>
                   <SelectTrigger className="w-full bg-charcoal border-white/20 text-white font-mono text-sm px-4 py-3 focus:border-primary focus:ring-0 transition-colors">
                     <SelectValue placeholder="SELECT SEX" />
                   </SelectTrigger>
@@ -291,8 +288,8 @@ export default function RegistrationPage() {
             </div>
 
             <div className="pt-4">
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full bg-primary hover:bg-red-700 text-white font-black text-lg sm:text-xl uppercase tracking-[0.2em] py-6 transition-all flex items-center justify-center gap-4 group"
               >
                 START YOUR RACE
@@ -306,14 +303,14 @@ export default function RegistrationPage() {
               <div className="w-2 h-2 bg-primary"></div>
               <p className="font-mono text-[9px] text-white/30 uppercase tracking-widest">System Ready / Lane 01 Assigned</p>
             </div>
-            <p className="font-mono text-[9px] text-white/30 uppercase tracking-widest">Entry Ver. 2.0.25</p>
+            <p className="font-mono text-[9px] text-white/30 uppercase tracking-widest">Entry Ver. 1.1</p>
           </div>
         </div>
       </main>
 
       <footer className="fixed bottom-10 left-10 right-10 z-50 flex justify-between items-end pointer-events-none">
         <div className="space-y-1">
-          <p className="font-mono text-[8px] text-white/20 uppercase tracking-[0.5em]">Global Athletics Standard Compliance</p>
+          <p className="font-mono text-[8px] text-white/20 uppercase tracking-[0.5em]">Athlos 2026 College Of Engineering And Management Punnapra</p>
           <div className="flex gap-1">
             <div className="w-8 h-1 bg-white/10"></div>
             <div className="w-2 h-1 bg-primary"></div>
@@ -321,7 +318,7 @@ export default function RegistrationPage() {
           </div>
         </div>
         <div className="text-right">
-          <p className="font-mono text-[8px] text-white/20 uppercase tracking-[0.5em]">Athlos Int. © 2025</p>
+          <p className="font-mono text-[8px] text-white/20 uppercase tracking-[0.5em]">Athlos CEMP. © 2026</p>
         </div>
       </footer>
     </div>
