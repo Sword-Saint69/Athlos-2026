@@ -1,0 +1,8 @@
+[
+    {
+      "origin": ["https://athlos-certificate.vercel.app", "http://localhost:3000"],
+      "method": ["GET", "HEAD", "OPTIONS"],
+      "maxAgeSeconds": 3600,
+      "responseHeader": ["Content-Type", "Access-Control-Allow-Origin"]
+    }
+  ]

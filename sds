@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>ATHLOS Admin Authentication</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@100..900&amp;family=Noto+Sans:wght@100..900&amp;family=Roboto+Mono:wght@300;400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#f20d0d",
+                        "background-dark": "#000000",
+                        "track-gray": "#262626",
+                        "charcoal": "#1a1a1a",
+                    },
+                    fontFamily: {
+                        "display": ["Lexend", "sans-serif"],
+                        "mono": ["'Roboto Mono'", "monospace"],
+                    },
+                    borderRadius: {
+                        "none": "0",
+                        "DEFAULT": "0",
+                    },
+                },
+            },
+        }
+    </script>
+<style type="text/tailwindcss">
+        .track-lines {
+            background-image: linear-gradient(to right, #262626 1px, transparent 1px);
+            background-size: 12.5% 100%;
+        }
+        .lane-number-bg {
+            font-family: 'Lexend', sans-serif;
+            font-weight: 900;
+            opacity: 0.1;
+            font-size: 24rem;
+            line-height: 1;
+            pointer-events: none;
+            user-select: none;
+        }
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus {
+            -webkit-text-fill-color: white;
+            -webkit-box-shadow: 0 0 0px 1000px #1a1a1a inset;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+    </style>
+</head>
+<body class="bg-background-dark font-display text-white selection:bg-primary selection:text-white antialiased">
+<div class="relative flex min-h-screen w-full flex-col overflow-hidden">
+<div class="fixed inset-0 track-lines pointer-events-none"></div>
+<div class="fixed top-8 right-10 z-50">
+<p class="font-mono text-[10px] text-white/60 uppercase tracking-[0.3em]">
+                SYSTEM STATUS: <span class="text-white">SECURE</span>
+</p>
+</div>
+<div class="fixed inset-0 grid grid-cols-8 pointer-events-none opacity-20">
+<div class="border-r border-track-gray"></div>
+<div class="border-r border-track-gray"></div>
+<div class="border-r border-track-gray"></div>
+<div class="border-r border-track-gray bg-white/[0.02]"></div>
+<div class="border-r border-track-gray"></div>
+<div class="border-r border-track-gray"></div>
+<div class="border-r border-track-gray"></div>
+<div></div>
+</div>
+<main class="relative z-10 flex-1 flex flex-col justify-center items-center">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+<span class="lane-number-bg text-white">04</span>
+</div>
+<div class="w-full max-w-md px-4 space-y-10">
+<div class="space-y-2">
+<p class="font-mono text-[10px] tracking-[0.5em] text-primary uppercase font-bold">Terminal Login</p>
+<h1 class="text-6xl font-black uppercase tracking-tighter leading-none italic">
+                        ADMIN <br/> ACCESS
+                    </h1>
+</div>
+<form class="space-y-6">
+<div class="space-y-2">
+<label class="font-mono text-[10px] text-white/40 uppercase tracking-widest block" for="admin_id">
+                            [ ADMIN_ID ]
+                        </label>
+<input autocomplete="off" class="w-full bg-charcoal border-none focus:ring-1 focus:ring-primary text-white font-mono text-sm uppercase tracking-widest py-5 px-6" id="admin_id" placeholder="ENTER IDENTIFIER" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="font-mono text-[10px] text-white/40 uppercase tracking-widest block" for="secure_key">
+                            [ SECURE_KEY ]
+                        </label>
+<input class="w-full bg-charcoal border-none focus:ring-1 focus:ring-primary text-white font-mono text-sm tracking-widest py-5 px-6" id="secure_key" placeholder="••••••••••••" type="password"/>
+</div>
+<div class="pt-4">
+<button class="w-full bg-primary hover:bg-red-700 text-white font-black text-lg uppercase tracking-[0.2em] py-6 transition-colors shadow-none" type="submit">
+                            AUTHORIZE
+                        </button>
+</div>
+</form>
+<div class="flex justify-between items-center pt-8 border-t border-white/10">
+<div class="space-y-1">
+<p class="font-mono text-[9px] text-white/30 uppercase tracking-widest">Protocol</p>
+<p class="font-mono text-[10px] text-white/80 uppercase">ATHLOS_v2.025</p>
+</div>
+<div class="text-right space-y-1">
+<p class="font-mono text-[9px] text-white/30 uppercase tracking-widest">Access Point</p>
+<p class="font-mono text-[10px] text-white/80 uppercase">LANE_04_PRIMARY</p>
+</div>
+</div>
+</div>
+</main>
+<footer class="relative z-10 p-10 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="size-5 text-primary">
+<svg fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M36.7273 44C33.9891 44 31.6043 39.8386 30.3636 33.69C29.123 39.8386 26.7382 44 24 44C21.2618 44 18.877 39.8386 17.6364 33.69C16.3957 39.8386 14.0109 44 11.2727 44C7.25611 44 4 35.0457 4 24C4 12.9543 7.25611 4 11.2727 4C14.0109 4 16.3957 8.16144 17.6364 14.31C18.877 8.16144 21.2618 4 24 4C26.7382 4 29.123 8.16144 30.3636 14.31C31.6043 8.16144 33.9891 4 36.7273 4C40.7439 4 44 12.9543 44 24C44 35.0457 40.7439 44 36.7273 44Z"></path>
+</svg>
+</div>
+<p class="font-mono text-[8px] text-white/20 uppercase tracking-[0.4em]">ATHLOS 2025 // SECURE INFRASTRUCTURE</p>
+</div>
+<p class="font-mono text-[8px] text-white/20 uppercase tracking-[0.4em]">FOR AUTHORIZED PERSONNEL ONLY</p>
+</footer>
+</div>
+
+</body></html>
