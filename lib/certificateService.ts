@@ -1,5 +1,5 @@
-import { db, storage } from './firebase';
-import { collection, query, where, getDocs, doc, getDoc, DocumentData } from 'firebase/firestore';
+import { db1, db2, storage } from './firebase';
+import { collection, query, where, getDocs, doc, getDoc, addDoc, deleteDoc, DocumentData, Firestore } from 'firebase/firestore';
 import { ref, getDownloadURL } from 'firebase/storage';
 
 export interface CertificateData {
@@ -53,184 +53,76 @@ export interface CertificateData {
 }
 
 export class CertificateService {
-  private static readonly COLLECTION_NAME = 'certificates-final';
+  private static readonly COLLECTION_1 = 'certificates-final';
+  private static readonly COLLECTION_2 = 'certificates';
 
-  /**
-   * Get all certificates by search ID (university code) - searches search_id field
-   */
-  static async getCertificatesByUniversityCode(searchId: string): Promise<CertificateData[]> {
+  static async getCertificatesFromDb(db: Firestore, collectionName: string, searchTerm: string, fieldName: string): Promise<CertificateData[]> {
     try {
-      const certificatesRef = collection(db, this.COLLECTION_NAME);
-      const q = query(certificatesRef, where('search_id', '==', searchId));
+      const certificatesRef = collection(db, collectionName);
+      const q = query(certificatesRef, where(fieldName, '==', searchTerm));
       const querySnapshot = await getDocs(q);
-      
+
       return querySnapshot.docs.map((doc: any) => {
         const data = doc.data();
         return {
           id: doc.id,
-          name: data.name || data.event_name || 'Unknown',
-          eventName: data.event || data.event_name || 'Unknown Event',
-          certificateId: data.certificate_id || 'Unknown',
-          universityCode: data.search_id || data.search_id1 || searchId,
-          phone: data.phone,
-          department: data.department,
-          year: data.year,
-          pdfUrl: data.pdfUrl,
-          // Map additional fields from your admin panel
-          organizerName: data.organizer_name,
-          search_id1: data.search_id1,
-          search_id2: data.search_id2,
-          event: data.event,
+          name: data["Full Name"] || data.name || data.event_name || 'Unknown',
+          eventName: data["Event"] || data.eventName || data.event || data.event_name || 'Unknown Event',
+          certificateId: data["University Code"] || data.certificate_id || data.certificateId || 'Unknown',
+          universityCode: data["University Code"] || data.universityCode || data.search_id || data.search_id1 || searchTerm,
+          phone: data["Phone Number"] || data.phone,
+          email: data["Email"] || data.email || data.search_id1,
+          sex: data["Sex"],
+          group: data["Group"],
           certificate_base64: data.certificate_base64,
           created_at: data.created_at,
-          font_family: data.font_family,
-          font_size: data.font_size,
-          semester: data.semester,
-          // Include download link fields
-          download_storage_url: data.download_storage_url,
-          download_storage_path: data.download_storage_path,
-          download_file_name: data.download_file_name,
-          download_file_size: data.download_file_size,
-          download_file_format: data.download_file_format,
-          download_generated_at: data.download_generated_at,
-          download_count: data.download_count,
-          download_links: data.download_links,
-          certificate_metadata: data.certificate_metadata,
-          ...data // Include all other fields
+          ...data
         };
       }) as CertificateData[];
     } catch (error) {
-      console.error('Error fetching certificates:', error);
-      throw new Error('Failed to fetch certificates');
+      console.error(`Error fetching from ${collectionName} by ${fieldName}:`, error);
+      return [];
     }
   }
-  
-  /**
-   * Get certificates by search_id1 (email or phone)
-   */
-  static async getCertificatesBySearchId1(searchId1: string): Promise<CertificateData[]> {
-    try {
-      const certificatesRef = collection(db, this.COLLECTION_NAME);
-      const q = query(certificatesRef, where('search_id1', '==', searchId1));
-      const querySnapshot = await getDocs(q);
-      
-      return querySnapshot.docs.map((doc: any) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name || data.event_name || 'Unknown',
-          eventName: data.event || data.event_name || 'Unknown Event',
-          certificateId: data.certificate_id || 'Unknown',
-          universityCode: data.search_id || data.search_id1 || searchId1,
-          phone: data.phone,
-          department: data.department,
-          year: data.year,
-          pdfUrl: data.pdfUrl,
-          // Map additional fields from your admin panel
-          organizerName: data.organizer_name,
-          search_id1: data.search_id1,
-          search_id2: data.search_id2,
-          event: data.event,
-          certificate_base64: data.certificate_base64,
-          created_at: data.created_at,
-          font_family: data.font_family,
-          font_size: data.font_size,
-          semester: data.semester,
-          // Include download link fields
-          download_storage_url: data.download_storage_url,
-          download_storage_path: data.download_storage_path,
-          download_file_name: data.download_file_name,
-          download_file_size: data.download_file_size,
-          download_file_format: data.download_file_format,
-          download_generated_at: data.download_generated_at,
-          download_count: data.download_count,
-          download_links: data.download_links,
-          certificate_metadata: data.certificate_metadata,
-          ...data // Include all other fields
-        };
-      }) as CertificateData[];
-    } catch (error) {
-      console.error('Error fetching certificates by search_id1:', error);
-      throw new Error('Failed to fetch certificates');
-    }
-  }
-  
-  /**
-   * Get certificates by search_id2 (alternative search field)
-   */
-  static async getCertificatesBySearchId2(searchId2: string): Promise<CertificateData[]> {
-    try {
-      const certificatesRef = collection(db, this.COLLECTION_NAME);
-      const q = query(certificatesRef, where('search_id2', '==', searchId2));
-      const querySnapshot = await getDocs(q);
-      
-      return querySnapshot.docs.map((doc: any) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: data.name || data.event_name || 'Unknown',
-          eventName: data.event || data.event_name || 'Unknown Event',
-          certificateId: data.certificate_id || 'Unknown',
-          universityCode: data.search_id || data.search_id1 || searchId2,
-          phone: data.phone,
-          department: data.department,
-          year: data.year,
-          pdfUrl: data.pdfUrl,
-          // Map additional fields from your admin panel
-          organizerName: data.organizer_name,
-          search_id1: data.search_id1,
-          search_id2: data.search_id2,
-          event: data.event,
-          certificate_base64: data.certificate_base64,
-          created_at: data.created_at,
-          font_family: data.font_family,
-          font_size: data.font_size,
-          semester: data.semester,
-          // Include download link fields
-          download_storage_url: data.download_storage_url,
-          download_storage_path: data.download_storage_path,
-          download_file_name: data.download_file_name,
-          download_file_size: data.download_file_size,
-          download_file_format: data.download_file_format,
-          download_generated_at: data.download_generated_at,
-          download_count: data.download_count,
-          download_links: data.download_links,
-          certificate_metadata: data.certificate_metadata,
-          ...data // Include all other fields
-        };
-      }) as CertificateData[];
-    } catch (error) {
-      console.error('Error fetching certificates by search_id2:', error);
-      throw new Error('Failed to fetch certificates');
-    }
-  }
-  
-  /**
-   * Get certificates by multiple search criteria (university code, email, or phone)
-   */
+
   static async getCertificatesBySearchTerm(searchTerm: string): Promise<CertificateData[]> {
     try {
-      // Search across search_id, search_id1, and search_id2 fields
-      const certificatesRef = collection(db, this.COLLECTION_NAME);
-      
-      // First try searching by search_id
-      let results = await this.getCertificatesByUniversityCode(searchTerm);
-      
-      // If no results found, try search_id1
-      if (results.length === 0) {
-        results = await this.getCertificatesBySearchId1(searchTerm);
-      }
-      
-      // If still no results, try search_id2
-      if (results.length === 0) {
-        results = await this.getCertificatesBySearchId2(searchTerm);
-      }
-      
-      return results;
+      // Create tasks for all possible searches in both databases
+      const tasks = [
+        // DB 1 (Legacy)
+        this.getCertificatesFromDb(db1, this.COLLECTION_1, searchTerm, 'search_id'),
+        this.getCertificatesFromDb(db1, this.COLLECTION_1, searchTerm, 'search_id1'),
+        this.getCertificatesFromDb(db1, this.COLLECTION_1, searchTerm, 'search_id2'),
+
+        // DB 2 (New)
+        this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'University Code'),
+        this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'Email'),
+        this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'Phone Number'),
+      ];
+
+      const allResults = await Promise.all(tasks);
+
+      // Flatten and remove duplicates (by ID)
+      const flattened = allResults.flat();
+      const uniqueResults = Array.from(new Map(flattened.map(item => [item.id, item])).values());
+
+      return uniqueResults;
     } catch (error) {
-      console.error('Error fetching certificates by search term:', error);
-      throw new Error('Failed to fetch certificates');
+      console.error('Error in multi-db search:', error);
+      throw new Error('Failed to fetch certificates from databases');
     }
+  }
+
+  static async getCertificatesByUniversityCode(searchId: string): Promise<CertificateData[]> {
+    return this.getCertificatesBySearchTerm(searchId);
+  }
+
+  static async getCertificatesBySearchId1(searchId1: string): Promise<CertificateData[]> {
+    return this.getCertificatesBySearchTerm(searchId1);
+  }
+
+  static async getCertificatesBySearchId2(searchId2: string): Promise<CertificateData[]> {
+    return this.getCertificatesBySearchTerm(searchId2);
   }
 
   /**
@@ -238,16 +130,25 @@ export class CertificateService {
    */
   static async getCertificateById(id: string): Promise<CertificateData | null> {
     try {
-      const docRef = doc(db, this.COLLECTION_NAME, id);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() } as CertificateData;
+      // Try DB 1
+      const docRef1 = doc(db1, this.COLLECTION_1, id);
+      const docSnap1 = await getDoc(docRef1);
+
+      if (docSnap1.exists()) {
+        return { id: docSnap1.id, ...docSnap1.data() } as CertificateData;
       }
-      
+
+      // Try DB 2
+      const docRef2 = doc(db2, this.COLLECTION_2, id);
+      const docSnap2 = await getDoc(docRef2);
+
+      if (docSnap2.exists()) {
+        return { id: docSnap2.id, ...docSnap2.data() } as CertificateData;
+      }
+
       return null;
     } catch (error) {
-      console.error('Error fetching certificate:', error);
+      console.error('Error fetching certificate by ID:', error);
       throw new Error('Failed to fetch certificate');
     }
   }
@@ -257,16 +158,87 @@ export class CertificateService {
    */
   static async getAllCertificates(): Promise<CertificateData[]> {
     try {
-      const certificatesRef = collection(db, this.COLLECTION_NAME);
-      const querySnapshot = await getDocs(certificatesRef);
-      
-      return querySnapshot.docs.map((doc: any) => ({
+      const tasks = [
+        getDocs(collection(db1, this.COLLECTION_1)),
+        getDocs(collection(db2, this.COLLECTION_2))
+      ];
+
+      const snapshots = await Promise.all(tasks);
+
+      const allDocs = snapshots.flatMap((snap, index) => snap.docs.map(doc => ({
         id: doc.id,
+        isFromDb1: index === 0,
         ...doc.data()
-      })) as CertificateData[];
+      })));
+
+      return allDocs as unknown as CertificateData[];
     } catch (error) {
-      console.error('Error fetching certificates:', error);
+      console.error('Error fetching all certificates:', error);
       throw new Error('Failed to fetch certificates');
+    }
+  }
+
+  /**
+   * Add a new certificate to DB2 (Certificate Provider)
+   */
+  static async addCertificate(data: any): Promise<string> {
+    try {
+      const docRef = await addDoc(collection(db2, this.COLLECTION_2), {
+        ...data,
+        created_at: new Date()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding certificate:', error);
+      throw new Error('Failed to add certificate');
+    }
+  }
+
+  /**
+   * Delete all certificates associated with an athlete across both databases
+   */
+  static async deleteCertificatesByAthlete(identifiers: { universityCode?: string; email?: string; phone?: string }): Promise<number> {
+    try {
+      // Find all certificates that match any of the identifiers
+      const searchTerms = [identifiers.universityCode, identifiers.email, identifiers.phone].filter(Boolean) as string[];
+
+      if (searchTerms.length === 0) return 0;
+
+      // Use the existing search logic to find certificates
+      // This is safer than raw queries because it handles the different field names (search_id, University Code, etc.)
+      const certificatesToDelete = await Promise.all(
+        searchTerms.map(term => this.getCertificatesBySearchTerm(term))
+      );
+
+      const uniqueCertificates = Array.from(
+        new Map(certificatesToDelete.flat().map(c => [c.id, c])).values()
+      );
+
+      if (uniqueCertificates.length === 0) return 0;
+
+      // Delete each certificate
+      await Promise.all(
+        uniqueCertificates.map(cert => this.deleteCertificate(cert.id, !!cert.isFromDb1))
+      );
+
+      return uniqueCertificates.length;
+    } catch (error) {
+      console.error('Error in bulk certificate deletion:', error);
+      throw new Error('Failed to delete associated certificates');
+    }
+  }
+
+  /**
+   * Delete a certificate from either database
+   */
+  static async deleteCertificate(id: string, fromDb1: boolean = false): Promise<void> {
+    try {
+      const db = fromDb1 ? db1 : db2;
+      const collectionName = fromDb1 ? this.COLLECTION_1 : this.COLLECTION_2;
+      await deleteDoc(doc(db, collectionName, id));
+    } catch (error) {
+      console.error('Error deleting certificate:', error);
+      throw new Error('Failed to delete certificate');
     }
   }
 
@@ -293,7 +265,7 @@ export class CertificateService {
       throw new Error('Failed to download certificate');
     }
   }
-  
+
   /**
    * Download certificate from base64 encoded data
    */
@@ -302,47 +274,47 @@ export class CertificateService {
       // Remove data URL prefix if present and extract mime type
       let cleanBase64 = base64Data;
       let finalMimeType = mimeType;
-      
+
       if (base64Data.startsWith('data:')) {
         // Extract mime type from data URL
         const dataUrlParts = base64Data.split(',');
         const header = dataUrlParts[0];
-        
+
         // Extract mime type from header
         const mimeTypeMatch = header.match(/data:(.*?);base64/);
         if (mimeTypeMatch) {
           finalMimeType = mimeTypeMatch[1];
         }
-        
+
         cleanBase64 = dataUrlParts[1];
       }
-      
+
       // Convert base64 to binary data
       const binaryString = atob(cleanBase64);
       const len = binaryString.length;
       const bytes = new Uint8Array(len);
-      
+
       for (let i = 0; i < len; i++) {
         bytes[i] = binaryString.charCodeAt(i);
       }
-      
+
       // Create blob from binary data
       const blob = new Blob([bytes], { type: finalMimeType });
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       console.log(`Certificate downloaded successfully: ${fileName}`);
     } catch (error) {
       console.error('Error downloading from base64:', error);
@@ -357,28 +329,28 @@ export class CertificateService {
     try {
       // Fetch the file from Firebase Storage
       const response = await fetch(storageUrl);
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch certificate: ${response.statusText}`);
       }
-      
+
       // Get the blob
       const blob = await response.blob();
-      
+
       // Create download link
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
       console.log(`Certificate downloaded successfully: ${fileName}`);
     } catch (error) {
       console.error('Error downloading from storage URL:', error);
@@ -410,7 +382,7 @@ export class CertificateService {
       if (!certificate) {
         throw new Error('Certificate not found');
       }
-      
+
       // Use the new download method
       await this.downloadCertificate(certificate);
     } catch (error) {
@@ -418,7 +390,7 @@ export class CertificateService {
       throw new Error('Failed to generate certificate');
     }
   }
-  
+
   /**
    * Download certificate PDF by ID (uses certificate data directly)
    */
@@ -429,7 +401,7 @@ export class CertificateService {
       if (!certificate) {
         throw new Error('Certificate not found');
       }
-      
+
       // Use the new download method
       await this.downloadCertificate(certificate);
     } catch (error) {
@@ -437,33 +409,33 @@ export class CertificateService {
       throw new Error('Failed to generate certificate');
     }
   }
-  
+
   /**
    * Generate a simple certificate HTML file
    */
   static async generateSimpleCertificate(certificateId: string, fileName: string): Promise<void> {
     try {
       let certificate;
-      
+
       // First try to get certificate by ID
       const response = await fetch(`/api/certificates?id=${certificateId}`);
       const data = await response.json();
-      
+
       if (data.certificates && data.certificates.length > 0) {
         certificate = data.certificates[0];
       } else {
         // If not found by ID, try searching by university code
         const searchResponse = await fetch(`/api/certificates?universityCode=${certificateId}`);
         const searchData = await searchResponse.json();
-        
+
         if (!searchData.certificates || searchData.certificates.length === 0) {
           throw new Error('Certificate not found');
         }
-        
+
         // Use the first certificate found
         certificate = searchData.certificates[0];
       }
-      
+
       // Create a simple HTML certificate
       const html = `
         <!DOCTYPE html>
@@ -565,11 +537,11 @@ export class CertificateService {
               ` : ''}
             </div>
             <div class="footer">
-              <p>Generated on ${new Date().toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</p>
+              <p>Generated on ${new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}</p>
               <p>DEXTRA 2025 - College of Engineering and Management Punnapra</p>
             </div>
           </div>
@@ -587,13 +559,13 @@ export class CertificateService {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
     } catch (error) {
       console.error('Error generating certificate:', error);
       throw new Error('Failed to generate certificate');
     }
   }
-  
+
   /**
    * Generate a simple certificate from the certificate data object
    */
@@ -710,11 +682,11 @@ export class CertificateService {
               ` : ''}
             </div>
             <div class="footer">
-              <p>Generated on ${new Date().toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</p>
+              <p>Generated on ${new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })}</p>
               <p>DEXTRA 2025 - College of Engineering and Management Punnapra</p>
             </div>
           </div>
@@ -732,7 +704,7 @@ export class CertificateService {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
+
     } catch (error) {
       console.error('Error generating certificate from data:', error);
       throw new Error('Failed to generate certificate from data');

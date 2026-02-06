@@ -11,8 +11,8 @@ interface CertificateCardProps {
   index: number
 }
 
-export function CertificateCard({ 
-  certificate, 
+export function CertificateCard({
+  certificate,
   index
 }: CertificateCardProps) {
   const [isHovered, setIsHovered] = useState(false)
@@ -36,7 +36,7 @@ export function CertificateCard({
 
   const handleTouchEnd = () => {
     if (!touchStart || !touchEnd) return
-    
+
     const distance = touchStart - touchEnd
     const isLeftSwipe = distance > 50
     const isRightSwipe = distance < -50
@@ -85,7 +85,7 @@ export function CertificateCard({
   const hasStoredCertificate = certificate.download_storage_url || certificate.certificate_base64
 
   return (
-    <Card 
+    <Card
       ref={cardRef}
       className={`
         relative p-6 shadow-xl border-border 
@@ -98,7 +98,7 @@ export function CertificateCard({
         ${isHovered ? 'ring-2 ring-primary/20' : ''}
         will-change-transform
       `}
-      style={{ 
+      style={{
         animation: `slideInUp 0.3s ease-out ${index * 0.05}s both`,
         transformOrigin: 'center bottom'
       }}
@@ -134,6 +134,18 @@ export function CertificateCard({
             <p className="font-semibold text-muted-foreground">Department:</p>
             <p className="text-foreground font-medium">{certificate.department || "Not specified"}</p>
           </div>
+          {certificate.sex && (
+            <div className="transition-all duration-150 ease-out hover:translate-x-1">
+              <p className="font-semibold text-muted-foreground">Sex:</p>
+              <p className="text-foreground font-medium">{certificate.sex}</p>
+            </div>
+          )}
+          {certificate.group && (
+            <div className="transition-all duration-150 ease-out hover:translate-x-1">
+              <p className="font-semibold text-muted-foreground">Group:</p>
+              <p className="text-foreground font-medium">{certificate.group}</p>
+            </div>
+          )}
           {certificate.organizerName && (
             <div className="transition-all duration-150 ease-out hover:translate-x-1">
               <p className="font-semibold text-muted-foreground">Organizer:</p>
@@ -147,7 +159,7 @@ export function CertificateCard({
             </div>
           )}
         </div>
-        
+
         {/* Certificate status indicator */}
         {hasStoredCertificate && (
           <div className="flex items-center justify-center gap-2 text-sm text-green-600 dark:text-green-400" style={{ animation: 'fadeIn 0.3s ease-out 0.2s both' }}>
@@ -155,12 +167,12 @@ export function CertificateCard({
             <span>High-quality certificate available</span>
           </div>
         )}
-        
+
         <div className="flex justify-center pt-4" style={{ animation: 'fadeIn 0.3s ease-out 0.25s both' }}>
           {hasStoredCertificate ? (
-            <Button 
+            <Button
               onClick={handleDownload}
-              className="w-full gap-2 min-h-[44px] touch-manipulation transition-all duration-150 ease-out hover:scale-105 hover:shadow-lg" 
+              className="w-full gap-2 min-h-[44px] touch-manipulation transition-all duration-150 ease-out hover:scale-105 hover:shadow-lg"
               size="lg"
             >
               <Download className="h-5 w-5" />
@@ -173,7 +185,7 @@ export function CertificateCard({
             </Button>
           )}
         </div>
-        
+
         {/* Mobile swipe hint */}
         <div className="hidden md:block text-center text-xs text-muted-foreground mt-2" style={{ animation: 'fadeIn 0.3s ease-out 0.3s both' }}>
           💡 Tip: Swipe left on mobile to download quickly

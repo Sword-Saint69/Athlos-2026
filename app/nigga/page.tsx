@@ -24,6 +24,9 @@ import {
 } from "lucide-react";
 import { collection, getDocs, query, addDoc, deleteDoc, doc, updateDoc, where, orderBy, arrayUnion, arrayRemove } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { toast } from "sonner";
+import { Upload } from "lucide-react";
+import { CertificateService, CertificateData } from "@/lib/certificateService";
 
 interface Athlete {
   id: string;
@@ -78,10 +81,15 @@ export default function AdminPanel() {
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [teamsError, setTeamsError] = useState<string | null>(null);
   const [showEventForm, setShowEventForm] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'events' | 'standings' | 'winners'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'events' | 'standings' | 'winners' | 'certificates'>('dashboard');
+  const [certificates, setCertificates] = useState<CertificateData[]>([]);
+  const [certificatesLoading, setCertificatesLoading] = useState<boolean>(false);
+  const [certificatesError, setCertificatesError] = useState<string | null>(null);
+  const [showCertificateForm, setShowCertificateForm] = useState<boolean>(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [updatingEvent, setUpdatingEvent] = useState<string | null>(null);
   const [updatingTeam, setUpdatingTeam] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<boolean>(false);
 
   // Event form state
   const [eventForm, setEventForm] = useState({
@@ -99,6 +107,27 @@ export default function AdminPanel() {
     position: 1,
     universityCode: ''
   });
+
+  const [athleteSearchTerm, setAthleteSearchTerm] = useState("");
+  const [showAthleteSuggestions, setShowAthleteSuggestions] = useState(false);
+
+  // Certificate form state
+  const [certificateForm, setCertificateForm] = useState({
+    "Full Name": '',
+    "Certificate ID": '',
+    "University Code": '',
+    "Event": '',
+    "Category": 'Participant',
+    "Date": '',
+    "Email": '',
+    "Phone Number": '',
+    "Sex": '',
+    "SEARCH ID 1": '',
+    "SEARCH ID 2": '',
+    "certificate_base64": ''
+  });
+
+  const [isAddingCertificate, setIsAddingCertificate] = useState(false);
 
   // Reset form when closing
   useEffect(() => {
@@ -200,6 +229,112 @@ export default function AdminPanel() {
       setTeamsLoading(false);
     }
   };
+  // Initialize Teams (AGNI, VAJRA, RUDRA, ASTRA)
+  const initializeTeams = async () => {
+    if (!confirm('This will create/reset AGNI, VAJRA, RUDRA, and ASTRA teams to 0 points. Continue?')) {
+      return;
+    }
+
+    try {
+      setTeamsLoading(true);
+      const teamNames = ['AGNI', 'VAJRA', 'RUDRA', 'ASTRA'];
+
+      for (const name of teamNames) {
+        // Check if team already exists
+        const q = query(collection(db, "teams"), where("name", "==", name));
+        const querySnapshot = await getDocs(q);
+
+        const initialStats = {
+          name,
+          sector: 'Core',
+          points: 0,
+          medals: {
+            gold: 0,
+            silver: 0,
+            bronze: 0
+          },
+          updatedAt: new Date()
+        };
+
+        if (querySnapshot.empty) {
+          await addDoc(collection(db, "teams"), initialStats);
+        } else {
+          const teamId = querySnapshot.docs[0].id;
+          await updateDoc(doc(db, "teams", teamId), initialStats);
+        }
+      }
+
+      await fetchTeams();
+      alert("Teams initialized successfully!");
+    } catch (error) {
+      console.error("Error initializing teams:", error);
+      alert("Failed to initialize teams.");
+    } finally {
+      setTeamsLoading(false);
+    }
+  };
+
+  // Fetch certificates from Firebase
+  const fetchCertificates = async () => {
+    try {
+      setCertificatesLoading(true);
+      setCertificatesError(null);
+      const data = await CertificateService.getAllCertificates();
+      setCertificates(data);
+    } catch (err) {
+      console.error("Error fetching certificates: ", err);
+      setCertificatesError("Failed to load certificates");
+    } finally {
+      setCertificatesLoading(false);
+    }
+  };
+
+  // Handle certificate form submit
+  const handleCertificateFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setIsAddingCertificate(true);
+      await CertificateService.addCertificate(certificateForm);
+      toast.success("Certificate added successfully!");
+      setShowCertificateForm(false);
+      setCertificateForm({
+        "Full Name": '',
+        "Certificate ID": '',
+        "University Code": '',
+        "Event": '',
+        "Category": 'Participant',
+        "Date": '',
+        "Email": '',
+        "Phone Number": '',
+        "Sex": '',
+        "SEARCH ID 1": '',
+        "SEARCH ID 2": '',
+        "certificate_base64": ''
+      });
+      fetchCertificates();
+    } catch (error: any) {
+      console.error("Error adding certificate:", error);
+      toast.error(error.message || "Failed to add certificate");
+    } finally {
+      setIsAddingCertificate(false);
+    }
+  };
+
+  // Handle certificate delete
+  const handleDeleteCertificate = async (certificate: CertificateData) => {
+    if (!confirm(`Are you sure you want to delete the certificate for ${certificate.name}?`)) {
+      return;
+    }
+
+    try {
+      await CertificateService.deleteCertificate(certificate.id, !!certificate.isFromDb1);
+      toast.success("Certificate deleted successfully");
+      fetchCertificates();
+    } catch (error: any) {
+      console.error("Error deleting certificate:", error);
+      toast.error(error.message || "Failed to delete certificate");
+    }
+  };
 
   // Handle tab specific fetching
   useEffect(() => {
@@ -207,6 +342,8 @@ export default function AdminPanel() {
       fetchEvents();
     } else if (activeTab === 'standings') {
       fetchTeams();
+    } else if (activeTab === 'certificates') {
+      fetchCertificates();
     }
   }, [activeTab]);
 
@@ -387,6 +524,32 @@ export default function AdminPanel() {
     }
   };
 
+  const handleDeleteAthlete = async (athlete: Athlete) => {
+    if (!confirm(`Are you sure you want to delete athlete ${athlete.fullName}? This will also delete all associated certificates.`)) {
+      return;
+    }
+
+    try {
+      // 1. Delete associated certificates first
+      const count = await CertificateService.deleteCertificatesByAthlete({
+        universityCode: athlete.universityCode,
+        email: athlete.email,
+        phone: athlete.phoneNumber
+      });
+
+      // 2. Delete athlete record
+      await deleteDoc(doc(db, "athletes", athlete.id));
+
+      // 3. Update local state
+      setAthletes(athletes.filter(a => a.id !== athlete.id));
+
+      toast.success(`Athlete and ${count} certificates deleted successfully`);
+    } catch (error: any) {
+      console.error("Error deleting athlete:", error);
+      toast.error(error.message || "Failed to delete athlete");
+    }
+  };
+
   const handleEditEvent = (event: Event) => {
     setEditingEvent(event);
     setEventForm({
@@ -432,6 +595,8 @@ export default function AdminPanel() {
         position: Math.min(winnerForm.position + 1, 3), // Auto increment position up to 3
         universityCode: ''
       });
+      setAthleteSearchTerm('');
+      setShowAthleteSuggestions(false);
 
       alert("Winner added successfully!");
     } catch (error) {
@@ -467,11 +632,44 @@ export default function AdminPanel() {
 
 
   const filteredAthletes = athletes.filter(athlete =>
-    (athlete.fullName && athlete.fullName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-    athlete.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (athlete.event && athlete.event.toLowerCase().includes(searchTerm.toLowerCase())) ||
     (athlete.universityCode && athlete.universityCode.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/admin/athletes/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(result.message || "Athletes uploaded successfully!");
+        // Refresh athletes list if on dashboard or athletes tab
+        if (activeTab === 'dashboard') {
+          // You might need a more comprehensive refresh here
+          window.location.reload();
+        }
+      } else {
+        toast.error(result.error || "Failed to upload athletes");
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("An error occurred during upload");
+    } finally {
+      setUploading(false);
+      // Reset input
+      e.target.value = '';
+    }
+  };
 
   return (
     <div className="relative flex min-h-screen w-full bg-background-dark text-white font-display overflow-hidden">
@@ -518,10 +716,32 @@ export default function AdminPanel() {
               <Trophy className="h-5 w-5" />
               <span className="hidden lg:block font-mono text-xs uppercase tracking-widest">Standings</span>
             </button>
+            <button
+              onClick={() => setActiveTab('certificates')}
+              className={`flex items-center gap-4 px-6 py-4 w-full text-left ${activeTab === 'certificates' ? 'bg-primary text-white' : 'text-white/40 hover:bg-white/5 hover:text-white'} transition-all`}
+            >
+              <FileText className="h-5 w-5" />
+              <span className="hidden lg:block font-mono text-xs uppercase tracking-widest">Certificates</span>
+            </button>
             <Link href="/athletes" className="flex items-center gap-4 px-6 py-4 text-white/40 hover:bg-white/5 hover:text-white transition-all">
               <Users className="h-5 w-5" />
               <span className="hidden lg:block font-mono text-xs uppercase tracking-widest">Athletes</span>
             </Link>
+            <div className="px-6 py-4 w-full">
+              <label className={`flex items-center gap-4 cursor-pointer text-white/40 hover:text-white transition-all ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                <Upload className="h-5 w-5" />
+                <span className="hidden lg:block font-mono text-xs uppercase tracking-widest">
+                  {uploading ? 'Uploading...' : 'Upload Excel'}
+                </span>
+                <input
+                  type="file"
+                  accept=".xlsx, .xls"
+                  className="hidden"
+                  onChange={handleExcelUpload}
+                  disabled={uploading}
+                />
+              </label>
+            </div>
           </nav>
 
           <div className="mt-auto px-6 w-full">
@@ -708,14 +928,66 @@ export default function AdminPanel() {
 
                           <div>
                             <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Winner Name</label>
-                            <input
-                              type="text"
-                              value={winnerForm.name}
-                              onChange={e => setWinnerForm({ ...winnerForm, name: e.target.value })}
-                              required
-                              className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0"
-                              placeholder="Student Name"
-                            />
+                            <div className="relative">
+                              <input
+                                type="text"
+                                value={winnerForm.name}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setWinnerForm({ ...winnerForm, name: val });
+                                  setAthleteSearchTerm(val);
+                                  setShowAthleteSuggestions(val.length > 0);
+                                }}
+                                onFocus={() => setShowAthleteSuggestions(winnerForm.name.length > 0)}
+                                required
+                                className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0"
+                                placeholder="Search or enter student name"
+                              />
+
+                              {showAthleteSuggestions && (
+                                <div className="absolute z-50 w-full mt-1 bg-charcoal border border-white/20 shadow-2xl max-h-60 overflow-y-auto">
+                                  {athletes
+                                    .filter(a =>
+                                      a.fullName.toLowerCase().includes(athleteSearchTerm.toLowerCase()) ||
+                                      a.universityCode.toLowerCase().includes(athleteSearchTerm.toLowerCase())
+                                    )
+                                    .slice(0, 10)
+                                    .map(athlete => (
+                                      <button
+                                        key={athlete.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setWinnerForm({
+                                            ...winnerForm,
+                                            name: athlete.fullName,
+                                            universityCode: athlete.universityCode
+                                          });
+                                          setShowAthleteSuggestions(false);
+                                        }}
+                                        className="w-full text-left px-4 py-3 hover:bg-primary transition-colors border-b border-white/5 last:border-0"
+                                      >
+                                        <p className="font-bold uppercase text-sm">{athlete.fullName}</p>
+                                        <p className="text-[10px] font-mono opacity-50">{athlete.universityCode}</p>
+                                      </button>
+                                    ))}
+                                  {athletes.filter(a =>
+                                    a.fullName.toLowerCase().includes(athleteSearchTerm.toLowerCase()) ||
+                                    a.universityCode.toLowerCase().includes(athleteSearchTerm.toLowerCase())
+                                  ).length === 0 && (
+                                      <div className="px-4 py-3 text-white/30 text-xs font-mono uppercase">
+                                        No matching athletes found
+                                      </div>
+                                    )}
+                                </div>
+                              )}
+                            </div>
+                            {/* Backdrop to close suggestions */}
+                            {showAthleteSuggestions && (
+                              <div
+                                className="fixed inset-0 z-40 bg-transparent"
+                                onClick={() => setShowAthleteSuggestions(false)}
+                              ></div>
+                            )}
                           </div>
 
                           <div>
@@ -804,12 +1076,21 @@ export default function AdminPanel() {
                   <h2 className="font-mono text-xl uppercase tracking-widest text-white/80">Team Standings Management</h2>
                   <p className="font-mono text-[10px] text-white/40 uppercase tracking-widest mt-1">Updates reflect on the live scorecard instantly</p>
                 </div>
-                <button
-                  onClick={fetchTeams}
-                  className="flex items-center gap-2 px-4 py-2 border border-white/20 text-white font-mono text-xs uppercase hover:border-primary transition-colors"
-                >
-                  Refresh
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={initializeTeams}
+                    className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white font-mono text-xs uppercase hover:bg-yellow-700 transition-colors"
+                  >
+                    <Activity className="h-4 w-4" />
+                    Initialize Teams
+                  </button>
+                  <button
+                    onClick={fetchTeams}
+                    className="flex items-center gap-2 px-4 py-2 border border-white/20 text-white font-mono text-xs uppercase hover:border-primary transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
 
               <div className="flex-1 overflow-y-auto border border-white/10 bg-black/40 backdrop-blur-sm pb-10">
@@ -901,6 +1182,210 @@ export default function AdminPanel() {
                 )}
               </div>
             </section>
+          ) : activeTab === 'certificates' ? (
+            // Certificates View
+            <section className="flex-1 px-8 pb-32 overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between mb-6 text-white">
+                <div>
+                  <h2 className="font-mono text-xl uppercase tracking-widest text-white/80">Certificate Management</h2>
+                  <p className="font-mono text-[10px] text-white/40 uppercase tracking-widest mt-1">Manage manual certificate entries and legacy data</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowCertificateForm(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white font-mono text-xs uppercase hover:bg-red-700 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Add Certificate
+                  </button>
+                  <button
+                    onClick={fetchCertificates}
+                    className="flex items-center gap-2 px-4 py-2 border border-white/20 text-white font-mono text-xs uppercase hover:border-primary transition-colors"
+                  >
+                    Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto border border-white/10 bg-black/40 backdrop-blur-sm pb-10">
+                {certificatesLoading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <p className="font-mono text-white/60">Loading certificates...</p>
+                  </div>
+                ) : certificatesError ? (
+                  <div className="flex items-center justify-center h-64 text-center">
+                    <div>
+                      <p className="font-mono text-red-400 mb-4">{certificatesError}</p>
+                      <button onClick={fetchCertificates} className="px-4 py-2 bg-primary text-white font-mono text-xs uppercase">Retry</button>
+                    </div>
+                  </div>
+                ) : certificates.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-64 text-white/20">
+                    <FileText className="h-16 w-16 mb-4 opacity-10" />
+                    <p className="font-mono uppercase tracking-widest">No certificates found</p>
+                  </div>
+                ) : (
+                  <table className="w-full text-left border-collapse text-white">
+                    <thead className="sticky top-0 bg-charcoal z-20">
+                      <tr>
+                        <th className="p-4 font-mono text-[10px] uppercase tracking-widest text-white/40 border-b border-white/10">Full Name</th>
+                        <th className="p-4 font-mono text-[10px] uppercase tracking-widest text-white/40 border-b border-white/10">Event / Category</th>
+                        <th className="p-4 font-mono text-[10px] uppercase tracking-widest text-white/40 border-b border-white/10">Search Identifiers</th>
+                        <th className="p-4 font-mono text-[10px] uppercase tracking-widest text-white/40 border-b border-white/10">Database</th>
+                        <th className="p-4 font-mono text-[10px] uppercase tracking-widest text-white/40 border-b border-white/10 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {certificates.map((cert) => (
+                        <tr key={cert.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="p-4">
+                            <p className="font-bold uppercase">{cert.name}</p>
+                            <p className="text-[10px] font-mono text-white/40">{cert.id}</p>
+                          </td>
+                          <td className="p-4">
+                            <p className="uppercase text-sm">{cert.eventName}</p>
+                            <p className="text-[10px] font-mono text-primary uppercase">{cert.Category || cert.category || 'Participant'}</p>
+                          </td>
+                          <td className="p-4">
+                            <div className="flex flex-wrap gap-2">
+                              {cert.universityCode && <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-[9px] font-mono">{cert.universityCode}</span>}
+                              {cert.email && <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-[9px] font-mono">{cert.email}</span>}
+                              {cert.phone && <span className="px-2 py-0.5 bg-white/5 border border-white/10 text-[9px] font-mono">{cert.phone}</span>}
+                            </div>
+                          </td>
+                          <td className="p-4 text-center">
+                            <span className={`px-2 py-0.5 text-[8px] font-mono rounded ${cert.isFromDb1 ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30'}`}>
+                              {cert.isFromDb1 ? 'DB 1' : 'DB 2'}
+                            </span>
+                          </td>
+                          <td className="p-4 text-right">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                onClick={() => handleDeleteCertificate(cert)}
+                                className="p-2 text-red-500 hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Add Certificate Modal */}
+              {showCertificateForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm shadow-2xl overflow-y-auto">
+                  <div className="bg-charcoal border border-white/10 w-full max-w-2xl p-8 relative max-h-[90vh] overflow-y-auto pb-20">
+                    <button
+                      onClick={() => setShowCertificateForm(false)}
+                      className="absolute top-6 right-6 text-white/40 hover:text-white"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+
+                    <h2 className="font-mono text-2xl uppercase tracking-[0.2em] mb-8 text-white">Manual Certificate Entry</h2>
+
+                    <form onSubmit={handleCertificateFormSubmit} className="space-y-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Full Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={certificateForm["Full Name"]}
+                            onChange={e => setCertificateForm({ ...certificateForm, "Full Name": e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0 uppercase placeholder:text-white/10"
+                            placeholder="e.g. MEGHA BIJU"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Event Name</label>
+                          <input
+                            type="text"
+                            required
+                            value={certificateForm.Event}
+                            onChange={e => setCertificateForm({ ...certificateForm, Event: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0 uppercase"
+                            placeholder="e.g. SHOTPUT"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">University Code (Search ID 1)</label>
+                          <input
+                            type="text"
+                            required
+                            value={certificateForm["University Code"]}
+                            onChange={e => setCertificateForm({ ...certificateForm, "University Code": e.target.value, "SEARCH ID 1": e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0 uppercase"
+                            placeholder="e.g. PRP25EC014"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Phone Number (Search ID 2)</label>
+                          <input
+                            type="text"
+                            value={certificateForm["Phone Number"]}
+                            onChange={e => setCertificateForm({ ...certificateForm, "Phone Number": e.target.value, "SEARCH ID 2": e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0 placeholder:text-white/10"
+                            placeholder="e.g. 9074829374"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Category</label>
+                          <select
+                            value={certificateForm.Category}
+                            onChange={e => setCertificateForm({ ...certificateForm, Category: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0"
+                          >
+                            <option value="Participant">Participant</option>
+                            <option value="Winner">Winner</option>
+                            <option value="Runner Up">Runner Up</option>
+                            <option value="Organizer">Organizer</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Date</label>
+                          <input
+                            type="text"
+                            value={certificateForm.Date}
+                            onChange={e => setCertificateForm({ ...certificateForm, Date: e.target.value })}
+                            className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-sm focus:border-primary focus:ring-0"
+                            placeholder="e.g. 2026-02-07"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block font-mono text-[10px] uppercase tracking-widest text-white/50 mb-2">Certificate Base64 (Source)</label>
+                        <textarea
+                          value={certificateForm.certificate_base64}
+                          onChange={e => setCertificateForm({ ...certificateForm, certificate_base64: e.target.value })}
+                          className="w-full bg-black/50 border border-white/20 px-4 py-3 text-white font-mono text-[10px] focus:border-primary focus:ring-0 h-32"
+                          placeholder="Paste base64 data here..."
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isAddingCertificate}
+                        className="w-full bg-primary py-4 font-black uppercase text-sm tracking-widest hover:bg-red-700 transition-colors disabled:opacity-50"
+                      >
+                        {isAddingCertificate ? 'PROCESSING...' : 'INITIALIZE CERTIFICATE DATA'}
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </section>
           ) : (
             // Dashboard View
             <>
@@ -991,8 +1476,11 @@ export default function AdminPanel() {
                                 <button className="text-[10px] font-mono uppercase text-primary border border-primary/20 px-2 py-1 flex items-center gap-1">
                                   <Eye className="h-3 w-3" /> View
                                 </button>
-                                <button className="text-[10px] font-mono uppercase text-white/40 hover:text-white flex items-center gap-1">
-                                  <Edit className="h-3 w-3" /> Edit
+                                <button
+                                  onClick={() => handleDeleteAthlete(athlete)}
+                                  className="text-[10px] font-mono uppercase text-red-500 hover:text-red-400 flex items-center gap-1"
+                                >
+                                  <Trash2 className="h-3 w-3" /> Delete
                                 </button>
                               </div>
                             </td>
