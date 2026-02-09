@@ -247,7 +247,7 @@ export default function Component() {
             )}
 
             {error && (
-              <div className="text-center max-w-md mx-auto mt-8 space-y-4">
+              <div className="text-center w-full max-w-md mx-auto mt-8 space-y-4">
                 <p className="text-red-400 animate-shake font-mono text-sm uppercase tracking-widest">{error}</p>
                 <div className="flex flex-col items-center space-y-3">
                   <p className="text-white/60 text-xs font-mono uppercase tracking-widest">Missing Certificates?</p>
