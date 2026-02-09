@@ -98,6 +98,8 @@ export class CertificateService {
         this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'University Code'),
         this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'Email'),
         this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'Phone Number'),
+        this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'SEARCH ID 1'),
+        this.getCertificatesFromDb(db2, this.COLLECTION_2, searchTerm, 'SEARCH ID 2'),
       ];
 
       const allResults = await Promise.all(tasks);
